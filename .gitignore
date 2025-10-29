@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
+
+# Authentication
+auth_config.yaml
+users.json
+reset_tokens.json
+.env
+.env.local
+.env.production
+
+# Data files
+*.csv
+*.xlsx
+*.pkl
+*.json
+!default_scenario/*.json
+!default_scenario/*.yaml
+!default_scenario/*.xlsx
+!default_scenario/*.pkl
+
+# Logs
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Deployment
+snowflake_deployment/
+merak_capital_deployment.zip
+create_deployment.py
+snowflake_connection.yml
+requirements_snowflake.txt
+SNOWFLAKE_*.md
+EMAIL_*.md

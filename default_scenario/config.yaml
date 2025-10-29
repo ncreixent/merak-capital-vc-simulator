@@ -1,0 +1,158 @@
+allow_recycling: false
+capital_calls:
+  minimum_cash_balance_pct: 0.05
+  tranche_size_pct: 0.25
+committed_capital: 50000000
+dynamic_stage_allocation:
+- allocation:
+    Pre-Seed: 0.5
+    Seed: 0.5
+    Series A: 0.0
+  year: 1
+- allocation:
+    Pre-Seed: 0.4
+    Seed: 0.55
+    Series A: 0.05
+  year: 2
+- allocation:
+    Pre-Seed: 0.2
+    Seed: 0.7
+    Series A: 0.1
+  year: 3
+- allocation:
+    Pre-Seed: 0.1
+    Seed: 0.8
+    Series A: 0.1
+  year: 4
+- allocation:
+    Pre-Seed: 0.0
+    Seed: 0.7
+    Series A: 0.3
+  year: 5
+follow_on_strategy:
+  passive_participation_rate: 0.5
+  type: spray_and_pray
+fund_lifespan_extensions_months: 24
+fund_lifespan_months: 120
+initial_ownership_targets:
+  Pre-Seed: 0.15
+  Seed: 0.15
+  Series A: 0.15
+  Series B: 0.15
+  Series C: 0.15
+investment_period_months: 60
+max_company_lifespan_months: 120
+max_deals_per_year: 8
+mgmt_fee_commitment_period_rate: 0.02
+mgmt_fee_extension_period_rate: 0.01
+mgmt_fee_post_commitment_period_rate: 0.0175
+num_investments: 40
+option_pool_expansion:
+  Seed: 0.1
+  Series A: 0.1
+  Series B: 0.05
+ownership_cap: 0.29
+prob_of_extensions:
+- 0.05
+- 0.05
+recycling_limit_pct_of_commitment: 0.25
+scenario:
+  date: '2025-07-02'
+  name: Base Case - Institutional Realism
+  notes: 'Refactored to a scalable, institutional-grade structure. Introduced ''stages_order''
+    as the single source of truth for lifecycle progression. Replaced brittle, stage-specific
+    probability keys with generic ''prob_to_next_stage''.
+
+    '
+schema_version: 1.9
+stages:
+  Pre-Seed:
+    max_valuation: 5000000
+    min_valuation: 500000
+    multiple_to_next_dist:
+      median_valuation: 2.3
+      sigma_log: 1.234
+      type: lognormal
+    post_money_valuation_dist:
+      median_valuation: 2866945
+      sigma_log: 1.158
+      type: lognormal
+    prob_to_exit: 0.05
+    prob_to_fail: 0.65
+    prob_to_next_stage: 0.3
+    target_dilution_pct: 0.2
+    time_in_stage_months: 12
+  Seed:
+    max_valuation: 15000000
+    min_valuation: 1000000
+    multiple_to_next_dist:
+      median_valuation: 6.02
+      sigma_log: 0.954
+      type: lognormal
+    post_money_valuation_dist:
+      median_valuation: 6628201
+      sigma_log: 1.149
+      type: lognormal
+    prob_to_exit: 0.1
+    prob_to_fail: 0.5
+    prob_to_next_stage: 0.4
+    target_dilution_pct: 0.2
+    time_in_stage_months: 18
+  Series A:
+    max_valuation: 100000000
+    min_valuation: 2000000
+    multiple_to_next_dist:
+      median_valuation: 3.53
+      sigma_log: 0.764
+      type: lognormal
+    post_money_valuation_dist:
+      median_valuation: 46221560
+      sigma_log: 0.858
+      type: lognormal
+    prob_to_exit: 0.2
+    prob_to_fail: 0.3
+    prob_to_next_stage: 0.5
+    target_dilution_pct: 0.15
+    time_in_stage_months: 24
+  Series B:
+    max_valuation: 300000000
+    min_valuation: 5000000
+    multiple_to_next_dist:
+      median_valuation: 2.62
+      sigma_log: 1.158
+      type: lognormal
+    post_money_valuation_dist:
+      median_valuation: 132159886
+      sigma_log: 0.816
+      type: lognormal
+    prob_to_exit: 0.65
+    prob_to_fail: 0.35
+    prob_to_next_stage: 0
+    target_dilution_pct: null
+    time_in_stage_months: 30
+  Series C:
+    max_valuation: 700000000
+    min_valuation: 20000000
+    multiple_to_next_dist:
+      median_valuation: 2.62
+      sigma_log: 1.158
+      type: lognormal
+    post_money_valuation_dist:
+      median_valuation: 341828556
+      sigma_log: 0.851
+      type: lognormal
+    prob_to_exit: 1.0
+    prob_to_fail: 0.0
+    time_in_stage_months: 30
+stages_order:
+- Pre-Seed
+- Seed
+- Series A
+- Series B
+- Series C
+target_investable_capital_pct: 0.8
+waterfall:
+  carried_interest_pct: 0.2
+  catch_up_pct: 1.0
+  gp_capital_contribution_pct: 0.01
+  preferred_return_pct: 0.08
