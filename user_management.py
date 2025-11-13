@@ -13,7 +13,12 @@ from datetime import datetime, timedelta
 from auth import hash_password, verify_password, check_user_permissions
 
 def load_users_from_file():
-    """Load users from JSON file"""
+    """Load users from JSON file or session state"""
+    # First, try to load from session state (for Streamlit Cloud compatibility)
+    if 'persistent_users' in st.session_state:
+        return st.session_state.persistent_users.copy()
+    
+    # Fallback: try to load from file (works in local dev)
     users_file = 'users.json'
     if os.path.exists(users_file):
         try:
@@ -21,9 +26,16 @@ def load_users_from_file():
                 users = json.load(f)
                 # Validate and fix password hashing
                 users = validate_and_fix_passwords(users)
+                # Store in session state for future access
+                st.session_state.persistent_users = users
                 return users
         except (json.JSONDecodeError, FileNotFoundError):
-            return {}
+            pass
+    
+    # Initialize empty dict in session state if nothing exists
+    if 'persistent_users' not in st.session_state:
+        st.session_state.persistent_users = {}
+    
     return {}
 
 def validate_and_fix_passwords(users):
@@ -48,15 +60,24 @@ def validate_and_fix_passwords(users):
     return fixed_users
 
 def save_users_to_file(users):
-    """Save users to JSON file"""
+    """Save users to session state and optionally to JSON file"""
+    # Always save to session state (works in Streamlit Cloud)
+    st.session_state.persistent_users = users.copy()
+    
+    # Try to save to file (works in local dev, may fail in Streamlit Cloud)
     users_file = 'users.json'
     try:
         with open(users_file, 'w') as f:
             json.dump(users, f, indent=2)
         return True
+    except (IOError, OSError, PermissionError) as e:
+        # File write failed (likely in Streamlit Cloud) - that's OK, we have session state
+        # Don't show error for read-only filesystem
+        return True  # Return True because session state save succeeded
     except Exception as e:
-        st.error(f"Error saving users: {str(e)}")
-        return False
+        # Other errors - show warning but still return True since session state works
+        st.warning(f"Could not save to file, but users saved to session: {str(e)}")
+        return True
 
 def add_user(username, password, email, name, role):
     """Add a new user to the system"""
@@ -90,6 +111,15 @@ def add_user(username, password, email, name, role):
 
 def remove_user(username):
     """Remove a user from the system"""
+    # Check if this is an environment-based user (cannot be deleted)
+    admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+    user_username = os.getenv('USER_USERNAME', 'user')
+    admin_password = os.getenv('ADMIN_PASSWORD')
+    user_password = os.getenv('USER_PASSWORD')
+    
+    if (admin_password and username == admin_username) or (user_password and username == user_username):
+        return False, f"User '{username}' is configured via environment variables and cannot be deleted"
+    
     users = load_users_from_file()
     
     if username not in users:
@@ -99,8 +129,9 @@ def remove_user(username):
     if username == st.session_state.username:
         return False, "You cannot delete your own account"
     
-    # Prevent deleting the last admin
-    admin_count = sum(1 for user in users.values() if user['role'] == 'admin')
+    # Prevent deleting the last admin (check all users including environment)
+    all_users = get_all_users()
+    admin_count = sum(1 for user in all_users.values() if user['role'] == 'admin')
     if users[username]['role'] == 'admin' and admin_count <= 1:
         return False, "Cannot delete the last admin user"
     
@@ -621,10 +652,12 @@ def get_all_users():
             'source': 'environment'
         }
     
-    # Add file-based users
+    # Add file-based or session state users (but don't overwrite environment users)
     file_users = load_users_from_file()
     for username, user_info in file_users.items():
-        user_info['source'] = 'file'
-        all_users[username] = user_info
+        # Only add if not already in all_users (environment users take priority)
+        if username not in all_users:
+            user_info['source'] = 'session' if 'persistent_users' in st.session_state else 'file'
+            all_users[username] = user_info
     
     return all_users

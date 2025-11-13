@@ -83,12 +83,20 @@ def setup_authentication():
         os.getenv('USER_PASSWORD')
     ])
     
-    if is_production or all_users:
-        # Use all available users
+    if is_production:
+        # In production, use only environment + file-based users
         auth_config = {'users': all_users}
     else:
-        # Fall back to development credentials
-        auth_config = load_development_credentials()
+        # In development, always include default admin/user accounts
+        # Merge development credentials with existing users
+        dev_credentials = load_development_credentials()
+        dev_users = dev_credentials['users']
+        
+        # Merge: file-based users take precedence, but dev users are always available
+        merged_users = dev_users.copy()
+        merged_users.update(all_users)  # File-based users override dev users if they exist
+        
+        auth_config = {'users': merged_users}
     
     # Cache the auth config
     st.session_state.auth_config_cache = auth_config

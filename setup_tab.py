@@ -534,36 +534,461 @@ def render_basic_config():
             )
 
 def render_advanced_config():
-    """Render advanced configuration interface"""
+    """Render advanced configuration interface with form-based inputs"""
     st.subheader("🔬 Advanced Configuration")
     
-    st.info("💡 **Advanced Mode**: Modify the complete configuration file with all available parameters.")
+    st.info("💡 **Advanced Mode**: Configure all fund parameters with detailed customization options.")
     
-    # Load current config as starting point
+    # Load current config as starting point for defaults
     try:
         with open('config.yaml', 'r', encoding='utf-8') as f:
-            current_config = yaml.safe_load(f)
+            default_config = yaml.safe_load(f)
     except FileNotFoundError:
         st.error("Default config.yaml not found. Please ensure the file exists.")
         return
     
-    # Display config in editable format
-    st.markdown("#### Configuration Parameters")
+    with st.form("advanced_config_form"):
+        # 1. Basic Fund Parameters (same as Basic Config)
+        st.markdown("#### 📊 Basic Fund Parameters")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("##### Fund Structure")
+            fund_size = st.number_input(
+                "Fund Size ($M)",
+                min_value=10.0,
+                max_value=10000.0,
+                value=default_config.get('committed_capital', 50000000) / 1_000_000,
+                step=10.0,
+                help="Total fund size in millions",
+                key="adv_fund_size"
+            )
+            
+            management_fee = st.slider(
+                "Management Fee (%)",
+                min_value=1.0,
+                max_value=3.0,
+                value=default_config.get('mgmt_fee_commitment_period_rate', 0.02) * 100,
+                step=0.1,
+                help="Annual management fee as percentage of committed capital",
+                key="adv_mgmt_fee"
+            )
+            
+            carried_interest = st.slider(
+                "Carried Interest (%)",
+                min_value=15.0,
+                max_value=25.0,
+                value=default_config.get('waterfall', {}).get('carried_interest_pct', 0.2) * 100,
+                step=0.5,
+                help="GP carried interest percentage",
+                key="adv_carried_interest"
+            )
+            
+            preferred_return = st.slider(
+                "Preferred Return (%)",
+                min_value=6.0,
+                max_value=12.0,
+                value=default_config.get('waterfall', {}).get('preferred_return_pct', 0.08) * 100,
+                step=0.5,
+                help="Annual preferred return to LPs",
+                key="adv_preferred_return"
+            )
+        
+        with col2:
+            st.markdown("##### Investment Strategy")
+            num_companies = st.number_input(
+                "Target Portfolio Size",
+                min_value=10,
+                max_value=200,
+                value=default_config.get('num_investments', 40),
+                step=1,
+                help="Number of companies to invest in",
+                key="adv_num_companies"
+            )
+            
+            max_deals_per_year = st.number_input(
+                "Max Deals per Year",
+                min_value=1,
+                max_value=50,
+                value=default_config.get('max_deals_per_year', 8),
+                step=1,
+                help="Maximum number of deals per year",
+                key="adv_max_deals"
+            )
+            
+            follow_on_strategy = st.selectbox(
+                "Follow-on Strategy",
+                options=["spray_and_pray", "pro_rata"],
+                format_func=lambda x: "Spray and Pray" if x == "spray_and_pray" else "Pro Rata",
+                index=0 if default_config.get('follow_on_strategy', {}).get('type', 'spray_and_pray') == 'spray_and_pray' else 1,
+                help="Investment strategy for follow-on rounds",
+                key="adv_follow_on"
+            )
+            
+            st.markdown("**Initial Ownership Targets (%)**")
+            ownership_pre_seed = st.slider(
+                "Pre-Seed Ownership (%)",
+                min_value=5.0,
+                max_value=30.0,
+                value=default_config.get('initial_ownership_targets', {}).get('Pre-Seed', 0.15) * 100,
+                step=0.5,
+                key="adv_own_pre_seed"
+            )
+            
+            ownership_seed = st.slider(
+                "Seed Ownership (%)",
+                min_value=5.0,
+                max_value=30.0,
+                value=default_config.get('initial_ownership_targets', {}).get('Seed', 0.15) * 100,
+                step=0.5,
+                key="adv_own_seed"
+            )
+            
+            ownership_series_a = st.slider(
+                "Series A Ownership (%)",
+                min_value=5.0,
+                max_value=30.0,
+                value=default_config.get('initial_ownership_targets', {}).get('Series A', 0.15) * 100,
+                step=0.5,
+                key="adv_own_series_a"
+            )
+        
+        st.markdown("---")
+        
+        # 2. Capital Calls Configuration
+        st.markdown("#### 💰 Capital Calls Configuration")
+        col1, col2 = st.columns(2)
     
-    # Convert to editable format
-    config_text = yaml.dump(current_config, default_flow_style=False, sort_keys=False)
-    
-    edited_config = st.text_area(
-        "Edit Configuration (YAML format):",
-        value=config_text,
-        height=400,
-        help="Modify the YAML configuration below. Be careful with indentation!"
-    )
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        # Scenario naming - use session state to persist user input
+        with col1:
+            minimum_cash_balance_pct = st.slider(
+                "Minimum Cash Balance (%)",
+                min_value=0.0,
+                max_value=20.0,
+                value=default_config.get('capital_calls', {}).get('minimum_cash_balance_pct', 0.05) * 100,
+                step=0.5,
+                help="Minimum cash balance as percentage of committed capital",
+                key="adv_min_cash"
+            )
+        
+        with col2:
+            tranche_size_pct = st.slider(
+                "Tranche Size (%)",
+                min_value=5.0,
+                max_value=50.0,
+                value=default_config.get('capital_calls', {}).get('tranche_size_pct', 0.25) * 100,
+                step=1.0,
+                help="Size of each capital call tranche as percentage",
+                key="adv_tranche_size"
+            )
+        
+        st.markdown("---")
+        
+        # 3. Fund Lifespan Configuration
+        st.markdown("#### ⏱️ Fund Lifespan Configuration")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fund_lifespan_months = st.number_input(
+                "Fund Lifespan (Months)",
+                min_value=60,
+                max_value=180,
+                value=default_config.get('fund_lifespan_months', 120),
+                step=6,
+                help="Total fund lifespan in months",
+                key="adv_fund_lifespan"
+            )
+        
+        with col2:
+            fund_lifespan_extensions_months = st.number_input(
+                "Fund Lifespan Extensions (Months)",
+                min_value=0,
+                max_value=60,
+                value=default_config.get('fund_lifespan_extensions_months', 24),
+                step=6,
+                help="Additional months available through extensions",
+                key="adv_fund_extensions"
+            )
+        
+        st.markdown("---")
+        
+        # 4. Management Fees Configuration
+        st.markdown("#### 💼 Management Fees Configuration")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            mgmt_fee_commitment = st.slider(
+                "Commitment Period Fee (%)",
+                min_value=1.0,
+                max_value=3.0,
+                value=default_config.get('mgmt_fee_commitment_period_rate', 0.02) * 100,
+                step=0.1,
+                help="Management fee during commitment period",
+                key="adv_mgmt_commitment"
+            )
+        
+        with col2:
+            mgmt_fee_extension = st.slider(
+                "Extension Period Fee (%)",
+                min_value=0.5,
+                max_value=2.0,
+                value=default_config.get('mgmt_fee_extension_period_rate', 0.01) * 100,
+                step=0.1,
+                help="Management fee during extension period",
+                key="adv_mgmt_extension"
+            )
+        
+        with col3:
+            mgmt_fee_post_commitment = st.slider(
+                "Post-Commitment Fee (%)",
+                min_value=1.0,
+                max_value=2.5,
+                value=default_config.get('mgmt_fee_post_commitment_period_rate', 0.0175) * 100,
+                step=0.05,
+                help="Management fee after commitment period",
+                key="adv_mgmt_post"
+            )
+        
+        st.markdown("---")
+        
+        # 5. Dynamic Stage Allocation (same as Basic Config)
+        st.markdown("#### 📈 Dynamic Stage Allocation (%)")
+        st.markdown("Configure how the fund allocates investments across stages over time. Values must sum to 100% for each year.")
+        
+        stage_allocation_data = []
+        default_allocation = default_config.get('dynamic_stage_allocation', [])
+        
+        for year in range(1, 6):
+            # Get default values for this year
+            year_default = next((item for item in default_allocation if item.get('year') == year), None)
+            default_pre_seed = year_default.get('allocation', {}).get('Pre-Seed', 0) * 100 if year_default else (50.0 if year == 1 else 40.0 if year == 2 else 20.0 if year == 3 else 10.0 if year == 4 else 0.0)
+            default_seed = year_default.get('allocation', {}).get('Seed', 0) * 100 if year_default else (50.0 if year == 1 else 55.0 if year == 2 else 70.0 if year == 3 else 80.0 if year == 4 else 70.0)
+            default_series_a = year_default.get('allocation', {}).get('Series A', 0) * 100 if year_default else (0.0 if year == 1 else 5.0 if year == 2 else 10.0 if year == 3 else 10.0 if year == 4 else 30.0)
+            
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+            
+            with col1:
+                st.write(f"**Year {year}**")
+            
+            with col2:
+                pre_seed_pct = st.number_input(
+                    f"Pre-Seed %",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=default_pre_seed,
+                    step=5.0,
+                    key=f"adv_pre_seed_{year}",
+                    help=f"Pre-Seed allocation for year {year}"
+                )
+            
+            with col3:
+                seed_pct = st.number_input(
+                    f"Seed %",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=default_seed,
+                    step=5.0,
+                    key=f"adv_seed_{year}",
+                    help=f"Seed allocation for year {year}"
+                )
+            
+            with col4:
+                series_a_pct = st.number_input(
+                    f"Series A %",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=default_series_a,
+                    step=5.0,
+                    key=f"adv_series_a_{year}",
+                    help=f"Series A allocation for year {year}"
+                )
+            
+            # Validate that percentages sum to 100%
+            total_pct = pre_seed_pct + seed_pct + series_a_pct
+            if abs(total_pct - 100.0) > 0.1:  # Allow small floating point errors
+                st.error(f"Year {year} allocations must sum to 100%. Current total: {total_pct:.1f}%")
+            
+            stage_allocation_data.append({
+                'year': year,
+                'Pre-Seed': pre_seed_pct / 100.0,
+                'Seed': seed_pct / 100.0,
+                'Series A': series_a_pct / 100.0
+            })
+        
+        st.markdown("---")
+        
+        # 6. Stage Customization (separate expandable section)
+        st.markdown("#### 🎯 Stage Customization")
+        st.markdown("Customize detailed parameters for each investment stage.")
+        
+        stages_config = {}
+        stages_order = default_config.get('stages_order', ['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C'])
+        default_stages = default_config.get('stages', {})
+        
+        # Create tabs for each stage
+        stage_tabs = st.tabs(stages_order)
+        
+        for idx, stage_name in enumerate(stages_order):
+            with stage_tabs[idx]:
+                stage_default = default_stages.get(stage_name, {})
+                
+                st.markdown(f"##### {stage_name} Stage Parameters")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    min_valuation = st.number_input(
+                        "Min Valuation ($)",
+                        min_value=0,
+                        max_value=1000000000,
+                        value=stage_default.get('min_valuation', 0),
+                        step=100000,
+                        format="%d",
+                        key=f"adv_{stage_name}_min_val",
+                        help=f"Minimum post-money valuation for {stage_name}"
+                    )
+                    
+                    max_valuation = st.number_input(
+                        "Max Valuation ($)",
+                        min_value=0,
+                        max_value=1000000000,
+                        value=stage_default.get('max_valuation', 0),
+                        step=100000,
+                        format="%d",
+                        key=f"adv_{stage_name}_max_val",
+                        help=f"Maximum post-money valuation for {stage_name}"
+                    )
+                    
+                    time_in_stage = st.number_input(
+                        "Time in Stage (Months)",
+                        min_value=1,
+                        max_value=60,
+                        value=stage_default.get('time_in_stage_months', 12),
+                        step=1,
+                        key=f"adv_{stage_name}_time",
+                        help=f"Average time spent in {stage_name} stage"
+                    )
+                    
+                    target_dilution = st.number_input(
+                        "Target Dilution (%)",
+                        min_value=0.0,
+                        max_value=50.0,
+                        value=(stage_default.get('target_dilution_pct', 0.2) * 100) if stage_default.get('target_dilution_pct') is not None else 0.0,
+                        step=0.5,
+                        key=f"adv_{stage_name}_dilution",
+                        help=f"Target dilution percentage for {stage_name}"
+                    )
+                
+                with col2:
+                    prob_to_exit = st.slider(
+                        "Probability to Exit (%)",
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=stage_default.get('prob_to_exit', 0.0) * 100,
+                        step=0.5,
+                        key=f"adv_{stage_name}_exit",
+                        help=f"Probability of exit from {stage_name} stage"
+                    )
+                    
+                    prob_to_fail = st.slider(
+                        "Probability to Fail (%)",
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=stage_default.get('prob_to_fail', 0.0) * 100,
+                        step=0.5,
+                        key=f"adv_{stage_name}_fail",
+                        help=f"Probability of failure from {stage_name} stage"
+                    )
+                    
+                    # Get prob_to_next_stage, ensuring it's a float (not a list)
+                    prob_to_next_raw = stage_default.get('prob_to_next_stage', 0.0)
+                    if isinstance(prob_to_next_raw, list):
+                        prob_to_next_raw = prob_to_next_raw[0] if prob_to_next_raw else 0.0
+                    elif not isinstance(prob_to_next_raw, (int, float)):
+                        prob_to_next_raw = 0.0
+                    
+                    prob_to_next = st.slider(
+                        "Probability to Next Stage (%)",
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=float(prob_to_next_raw) * 100,
+                        step=0.5,
+                        key=f"adv_{stage_name}_next",
+                        help=f"Probability of advancing to next stage from {stage_name}"
+                    )
+                
+                st.markdown("**Valuation Distributions**")
+                
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    st.markdown("**Post-Money Valuation Distribution**")
+                    post_money_median = st.number_input(
+                        "Median Valuation ($)",
+                        min_value=0,
+                        max_value=1000000000,
+                        value=stage_default.get('post_money_valuation_dist', {}).get('median_valuation', 0),
+                        step=100000,
+                        format="%d",
+                        key=f"adv_{stage_name}_post_median",
+                        help="Median post-money valuation"
+                    )
+                    
+                    post_money_sigma = st.number_input(
+                        "Sigma (Log)",
+                        min_value=0.1,
+                        max_value=5.0,
+                        value=stage_default.get('post_money_valuation_dist', {}).get('sigma_log', 1.0),
+                        step=0.1,
+                        key=f"adv_{stage_name}_post_sigma",
+                        help="Log-normal distribution sigma parameter"
+                    )
+                
+                with col4:
+                    st.markdown("**Multiple to Next Stage Distribution**")
+                    multiple_median = st.number_input(
+                        "Median Multiple",
+                        min_value=0.1,
+                        max_value=20.0,
+                        value=stage_default.get('multiple_to_next_dist', {}).get('median_valuation', 1.0),
+                        step=0.1,
+                        key=f"adv_{stage_name}_mult_median",
+                        help="Median multiple to next stage"
+                    )
+                    
+                    multiple_sigma = st.number_input(
+                        "Sigma (Log)",
+                        min_value=0.1,
+                        max_value=5.0,
+                        value=stage_default.get('multiple_to_next_dist', {}).get('sigma_log', 1.0),
+                        step=0.1,
+                        key=f"adv_{stage_name}_mult_sigma",
+                        help="Log-normal distribution sigma parameter"
+                    )
+                
+                # Store stage configuration
+                stages_config[stage_name] = {
+                    'min_valuation': min_valuation,
+                    'max_valuation': max_valuation,
+                    'time_in_stage_months': time_in_stage,
+                    'target_dilution_pct': target_dilution / 100.0 if target_dilution > 0 else None,
+                    'prob_to_exit': prob_to_exit / 100.0,
+                    'prob_to_fail': prob_to_fail / 100.0,
+                    'prob_to_next_stage': prob_to_next / 100.0,
+                    'post_money_valuation_dist': {
+                        'median_valuation': post_money_median,
+                        'sigma_log': post_money_sigma,
+                        'type': 'lognormal'
+                    },
+                    'multiple_to_next_dist': {
+                        'median_valuation': multiple_median,
+                        'sigma_log': multiple_sigma,
+                        'type': 'lognormal'
+                    }
+                }
+        
+        st.markdown("---")
+        
+        # Scenario naming
         if 'advanced_config_scenario_name' not in st.session_state:
             st.session_state.advanced_config_scenario_name = f"Advanced Config - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         
@@ -578,11 +1003,21 @@ def render_advanced_config():
         if scenario_name != st.session_state.advanced_config_scenario_name:
             st.session_state.advanced_config_scenario_name = scenario_name
     
-    with col2:
-        st.write("")
-        st.write("")
-        if st.button("🚀 Create Scenario", type="primary"):
-            create_scenario_from_advanced_config(scenario_name, edited_config)
+        # Submit button
+        submitted = st.form_submit_button("🚀 Create Scenario", type="primary")
+        
+        if submitted:
+            # stages_config is already built with form values in the loop above
+            # All form input variables are available here with their submitted values
+            create_scenario_from_advanced_config_form(
+                scenario_name, fund_size, num_companies, management_fee,
+                carried_interest, preferred_return, max_deals_per_year,
+                follow_on_strategy, ownership_pre_seed, ownership_seed, ownership_series_a,
+                minimum_cash_balance_pct, tranche_size_pct,
+                fund_lifespan_months, fund_lifespan_extensions_months,
+                mgmt_fee_commitment, mgmt_fee_extension, mgmt_fee_post_commitment,
+                stage_allocation_data, stages_config, default_config
+            )
 
 def render_file_config():
     """Render file upload configuration interface"""
@@ -699,8 +1134,14 @@ def create_scenario_from_basic_config(scenario_name, fund_size, num_companies, m
     except Exception as e:
         st.error(f"❌ Error creating scenario: {str(e)}")
 
-def create_scenario_from_advanced_config(scenario_name, config_text):
-    """Create scenario from advanced configuration text"""
+def create_scenario_from_advanced_config_form(scenario_name, fund_size, num_companies, management_fee,
+                                             carried_interest, preferred_return, max_deals_per_year,
+                                             follow_on_strategy, ownership_pre_seed, ownership_seed, ownership_series_a,
+                                             minimum_cash_balance_pct, tranche_size_pct,
+                                             fund_lifespan_months, fund_lifespan_extensions_months,
+                                             mgmt_fee_commitment, mgmt_fee_extension, mgmt_fee_post_commitment,
+                                             stage_allocation_data, stages_config, default_config):
+    """Create scenario from advanced configuration form inputs"""
     
     # Check user permissions
     user_permissions = check_user_permissions(st.session_state.username)
@@ -709,16 +1150,59 @@ def create_scenario_from_advanced_config(scenario_name, config_text):
         return
     
     try:
-        # Parse the YAML
-        config_dict = yaml.safe_load(config_text)
+        # Start with base config
+        base_config = default_config.copy()
         
-        # Validate the configuration
-        if not validate_config(config_dict):
-            st.error("❌ Invalid configuration. Please check your YAML syntax and parameters.")
-            return
+        # Update Fund Structure parameters
+        base_config['committed_capital'] = fund_size * 1_000_000  # Convert to actual dollars
+        base_config['mgmt_fee_commitment_period_rate'] = management_fee / 100
+        base_config['waterfall']['carried_interest_pct'] = carried_interest / 100
+        base_config['waterfall']['preferred_return_pct'] = preferred_return / 100
+        base_config['fund_lifespan_months'] = fund_lifespan_months
+        base_config['fund_lifespan_extensions_months'] = fund_lifespan_extensions_months
+        
+        # Update Investment Strategy parameters
+        base_config['num_investments'] = num_companies
+        base_config['max_deals_per_year'] = max_deals_per_year
+        base_config['follow_on_strategy']['type'] = follow_on_strategy
+        
+        # Update Initial Ownership Targets
+        base_config['initial_ownership_targets'] = {
+            'Pre-Seed': ownership_pre_seed / 100.0,
+            'Seed': ownership_seed / 100.0,
+            'Series A': ownership_series_a / 100.0,
+            'Series B': default_config.get('initial_ownership_targets', {}).get('Series B', 0.15),
+            'Series C': default_config.get('initial_ownership_targets', {}).get('Series C', 0.15)
+        }
+        
+        # Update Capital Calls Configuration
+        base_config['capital_calls'] = {
+            'minimum_cash_balance_pct': minimum_cash_balance_pct / 100.0,
+            'tranche_size_pct': tranche_size_pct / 100.0
+        }
+        
+        # Update Management Fees Configuration
+        base_config['mgmt_fee_commitment_period_rate'] = mgmt_fee_commitment / 100
+        base_config['mgmt_fee_extension_period_rate'] = mgmt_fee_extension / 100
+        base_config['mgmt_fee_post_commitment_period_rate'] = mgmt_fee_post_commitment / 100
+        
+        # Update Dynamic Stage Allocation
+        base_config['dynamic_stage_allocation'] = []
+        for year_data in stage_allocation_data:
+            base_config['dynamic_stage_allocation'].append({
+                'year': year_data['year'],
+                'allocation': {
+                    'Pre-Seed': year_data['Pre-Seed'],
+                    'Seed': year_data['Seed'],
+                    'Series A': year_data['Series A']
+                }
+            })
+        
+        # Update Stages Configuration
+        base_config['stages'] = stages_config
         
         # Create scenario
-        scenario = ScenarioManager.create_scenario(scenario_name, config_dict)
+        scenario = ScenarioManager.create_scenario(scenario_name, base_config)
         
         # Add to session state
         st.session_state.scenarios[scenario_name] = scenario
@@ -733,8 +1217,6 @@ def create_scenario_from_advanced_config(scenario_name, config_text):
         st.info("💡 Go to the 'Run & Analyze' tab to execute the simulation.")
         st.rerun()
         
-    except yaml.YAMLError as e:
-        st.error(f"❌ Invalid YAML syntax: {str(e)}")
     except Exception as e:
         st.error(f"❌ Error creating scenario: {str(e)}")
 
